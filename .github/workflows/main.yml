@@ -1,5 +1,4 @@
 name: Workflow CI
-
 on:
   push:
     branches:
@@ -7,7 +6,7 @@ on:
   workflow_dispatch:
 
 jobs:
-  train-build-deploy:
+  build-and-push:
     runs-on: ubuntu-latest
 
     steps:
@@ -22,22 +21,18 @@ jobs:
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
+          pip install mlflow
           pip install -r MLProject/requirements.txt
-
-      - name: Train model with MLflow
-        run: |
-          cd MLProject
-          python modelling.py
 
       - name: Get latest MLflow run_id
         run: |
           RUN_ID=$(ls -td MLProject/mlruns/*/* | head -n 1 | awk -F'/' '{print $(NF-1)}')
           echo "RUN_ID=$RUN_ID" >> $GITHUB_ENV
-          echo "Latest run_id: $RUN_ID"
+          echo "Using run_id: $RUN_ID"
 
       - name: Verify model artifact
         run: |
-          ls -l MLProject/mlruns/*/$RUN_ID/artifacts
+          ls -l MLProject/mlruns/*/$RUN_ID/artifacts/model
 
       - name: Build Docker image from MLflow model
         run: |
@@ -53,8 +48,10 @@ jobs:
 
       - name: Tag Docker image
         run: |
-          docker tag air-quality-mlflow ${{ secrets.DOCKER_USERNAME }}/air-quality-mlflow:latest
+          docker tag air-quality-mlflow \
+            ${{ secrets.DOCKER_USERNAME }}/air-quality-mlflow:latest
 
       - name: Push Docker image
         run: |
-          docker push ${{ secrets.DOCKER_USERNAME }}/air-quality-mlflow:latest
+          docker push \
+            ${{ secrets.DOCKER_USERNAME }}/air-quality-mlflow:latest
