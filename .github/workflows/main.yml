@@ -1,4 +1,5 @@
-name: Workflow CI
+name: CI/CD MLflow Advanced
+
 on:
   push:
     branches:
@@ -6,52 +7,66 @@ on:
   workflow_dispatch:
 
 jobs:
-  build-and-push:
+  build-and-deploy:
     runs-on: ubuntu-latest
 
     steps:
+      # 1. Checkout repository
       - name: Checkout repository
         uses: actions/checkout@v3
 
+      # 2. Setup Python
       - name: Set up Python
         uses: actions/setup-python@v4
         with:
-          python-version: "3.9"
+          python-version: "3.12.7"
 
-      - name: Install dependencies
+      # 3. Install dependencies
+      - name: Install Python dependencies
         run: |
           python -m pip install --upgrade pip
           pip install mlflow
           pip install -r MLProject/requirements.txt
 
-      - name: Get latest MLflow run_id
+      # 4. Verify MLflow model artifact (MLflow 2.x compatible)
+      - name: Verify MLflow model artifact
         run: |
-          RUN_ID=$(ls -td MLProject/mlruns/*/* | head -n 1 | awk -F'/' '{print $(NF-1)}')
-          echo "RUN_ID=$RUN_ID" >> $GITHUB_ENV
-          echo "Using run_id: $RUN_ID"
+          echo "Searching for MLmodel file..."
+          MODEL_PATH=$(find MLProject/mlruns -type f -name MLmodel | head -n 1)
 
-      - name: Verify model artifact
-        run: |
-          ls -l MLProject/mlruns/$RUN_ID/artifacts/model
+          if [ -z "$MODEL_PATH" ]; then
+            echo "❌ MLmodel not found"
+            exit 1
+          fi
 
+          echo "✅ MLmodel found at:"
+          echo "$MODEL_PATH"
+
+          MODEL_DIR=$(dirname "$MODEL_PATH")
+          echo "MODEL_DIR=$MODEL_DIR" >> $GITHUB_ENV
+
+      # 5. Build Docker image from MLflow model
       - name: Build Docker image from MLflow model
         run: |
+          echo "Building Docker image from $MODEL_DIR"
           mlflow models build-docker \
-            -m "MLProject/mlruns/$RUN_ID/artifacts/model" \
-            -n air-quality-mlflow
+            --model-uri "file://$MODEL_DIR" \
+            --name airquality-mlflow-model
 
+      # 6. Login to Docker Hub
       - name: Login to Docker Hub
         uses: docker/login-action@v2
         with:
-          username: ${{ secrets.DOCKER_USERNAME }}
-          password: ${{ secrets.DOCKER_TOKEN }}
+          username: ${{ secrets.DOCKER_HUB_USERNAME }}
+          password: ${{ secrets.DOCKER_HUB_ACCESS_TOKEN }}
 
+      # 7. Tag Docker image
       - name: Tag Docker image
         run: |
-          docker tag air-quality-mlflow \
-            ${{ secrets.DOCKER_USERNAME }}/air-quality-mlflow:latest
+          docker tag airquality-mlflow-model \
+            ${{ secrets.DOCKER_HUB_USERNAME }}/airquality-mlflow-model:latest
 
+      # 8. Push Docker image
       - name: Push Docker image
         run: |
-          docker push \
-            ${{ secrets.DOCKER_USERNAME }}/air-quality-mlflow:latest
+          docker push ${{ secrets.DOCKER_HUB_USERNAME }}/airquality-mlflow-model:latest
