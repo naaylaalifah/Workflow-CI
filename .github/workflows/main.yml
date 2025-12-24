@@ -32,12 +32,12 @@ jobs:
 
       - name: Verify model artifact
         run: |
-          ls -l MLProject/mlruns/*/$RUN_ID/artifacts/model
+          ls -l MLProject/mlruns/$RUN_ID/artifacts/model
 
       - name: Build Docker image from MLflow model
         run: |
           mlflow models build-docker \
-            -m "MLProject/mlruns/*/$RUN_ID/artifacts/model" \
+            -m "MLProject/mlruns/$RUN_ID/artifacts/model" \
             -n air-quality-mlflow
 
       - name: Login to Docker Hub
