@@ -36,7 +36,7 @@ jobs:
       shell: bash -l {0}
       run: |
         cd MLProject
-        mlflow build-docker \
+        mlflow models build-docker \
           -m mlruns/0/model \
           -n ${{ secrets.DOCKER_HUB_USERNAME }}/air-quality-mlflow
 
