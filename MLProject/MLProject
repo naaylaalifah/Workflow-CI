@@ -1,4 +1,4 @@
-name: air-quality-training
+name: air-quality-mlflow-project
 
 conda_env: conda.yaml
 

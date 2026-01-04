@@ -1,12 +1,15 @@
 import mlflow
 import mlflow.sklearn
 import pandas as pd
+import os
 
 from sklearn.model_selection import train_test_split
 from sklearn.ensemble import RandomForestRegressor
 from sklearn.metrics import mean_squared_error, mean_absolute_error, r2_score
 
-df = pd.read_csv("preprocessed_data.csv")
+# ================= LOAD DATA =================
+DATA_PATH = os.environ.get("DATA_PATH", "preprocessed_data.csv")
+df = pd.read_csv(DATA_PATH)
 
 X = df.drop(columns=["C6H6(GT)"])
 y = df["C6H6(GT)"]
@@ -15,29 +18,36 @@ X_train, X_test, y_train, y_test = train_test_split(
     X, y, test_size=0.2, random_state=42
 )
 
-model = RandomForestRegressor(
-    n_estimators=100,
-    random_state=42
-)
+# ================= MLFLOW =================
+mlflow.set_experiment("AirQuality_Baseline_Model")
 
-model.fit(X_train, y_train)
-y_pred = model.predict(X_test)
+with mlflow.start_run():
 
-rmse = mean_squared_error(y_test, y_pred) ** 0.5
-mae = mean_absolute_error(y_test, y_pred)
-r2 = r2_score(y_test, y_pred)
+    model = RandomForestRegressor(
+        n_estimators=150,
+        random_state=42
+    )
 
-mlflow.log_param("n_estimators", 100)
-mlflow.log_metric("rmse", rmse)
-mlflow.log_metric("mae", mae)
-mlflow.log_metric("r2_score", r2)
+    model.fit(X_train, y_train)
+    y_pred = model.predict(X_test)
 
-mlflow.sklearn.log_model(
-    model,
-    artifact_path="model",
-    input_example=X_test.iloc[:5]
-)
+    rmse = mean_squared_error(y_test, y_pred) ** 0.5
+    mae = mean_absolute_error(y_test, y_pred)
+    r2 = r2_score(y_test, y_pred)
 
-print("RMSE:", rmse)
-print("MAE:", mae)
-print("R2:", r2)
+    mlflow.log_param("model_type", "RandomForestRegressor")
+    mlflow.log_param("n_estimators", 150)
+
+    mlflow.log_metric("rmse", rmse)
+    mlflow.log_metric("mae", mae)
+    mlflow.log_metric("r2_score", r2)
+
+    mlflow.sklearn.log_model(
+        model,
+        artifact_path="model",
+        input_example=X_test.iloc[:5]
+    )
+
+    print(f"RMSE: {rmse}")
+    print(f"MAE: {mae}")
+    print(f"R2 Score: {r2}")
