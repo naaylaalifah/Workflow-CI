@@ -38,10 +38,7 @@ mlflow.log_metric("r2_score", r2)
 
 mlflow.sklearn.log_model(
     model,
-    artifact_path="model",
-    input_example=X_test.iloc[:5]
+    artifact_path="model"
 )
 
-print(f"RMSE: {rmse}")
-print(f"MAE: {mae}")
-print(f"R2 Score: {r2}")
+print("MODEL_URI=mlruns/0/model")
